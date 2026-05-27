@@ -17,7 +17,7 @@ import json
 
 from torch_geometric.nn import GATv2Conv, global_mean_pool
 
-from models import LossLogger, PTListDataset, collate_fn, list_pt_files, SimpleGNN, GraphFusionTokenGenerator, GraphCrossAttention, LlamaWithGraph, infer_node_feature_dim, nan_checker_hook, sanity_preview, latest_ckpt
+from models import LossLogger, PTListDataset, collate_fn, list_pt_files, SimpleGNN, GraphFusionTokenGenerator, GatedGraphCrossAttention, LlamaWithGraphLayerSpecific, infer_node_feature_dim, nan_checker_hook, sanity_preview, latest_ckpt
 
 # Config
 MODEL_PATH = "/home/xuhaoche/.llama/HF/Llama3.1-8B-Instruct"
@@ -450,31 +450,31 @@ def main():
     sanity_preview(sample)
 
     # model
-    model = LlamaWithGraph(MODEL_PATH, tokenizer,
+    model = LlamaWithGraphLayerSpecific(MODEL_PATH, tokenizer,
                            gnn_in_dim_ast=ast_dim, gnn_in_dim_cfg=cfg_dim, gnn_in_dim_dfg=dfg_dim)
 
     # Register hooks for debugging
-    unwrapped_model = accelerator.unwrap_model(model)
-    unwrapped_model.gnn_ast.register_forward_hook(nan_checker_hook)
-    unwrapped_model.gnn_cfg.register_forward_hook(nan_checker_hook)
-    unwrapped_model.gnn_dfg.register_forward_hook(nan_checker_hook)
-    unwrapped_model.fusion_proj.register_forward_hook(nan_checker_hook)
-    unwrapped_model.token_generator.register_forward_hook(nan_checker_hook)
-    unwrapped_model.cross_attn.register_forward_hook(nan_checker_hook)
+    # unwrapped_model = accelerator.unwrap_model(model)
+    # unwrapped_model.gnn_ast.register_forward_hook(nan_checker_hook)
+    # unwrapped_model.gnn_cfg.register_forward_hook(nan_checker_hook)
+    # unwrapped_model.gnn_dfg.register_forward_hook(nan_checker_hook)
+    # unwrapped_model.fusion_proj.register_forward_hook(nan_checker_hook)
+    # unwrapped_model.token_generator.register_forward_hook(nan_checker_hook)
+    # unwrapped_model.cross_attn.register_forward_hook(nan_checker_hook)
 
-    # Register modules with monitor
-    if monitor is not None:
-        monitor.register_module('gnn_ast', unwrapped_model.gnn_ast)
-        monitor.register_module('gnn_cfg', unwrapped_model.gnn_cfg)
-        monitor.register_module('gnn_dfg', unwrapped_model.gnn_dfg)
-        monitor.register_module('fusion_proj', unwrapped_model.fusion_proj)
-        monitor.register_module('token_generator', unwrapped_model.token_generator)
-        monitor.register_module('cross_attn', unwrapped_model.cross_attn)
+    # # Register modules with monitor
+    # if monitor is not None:
+    #     monitor.register_module('gnn_ast', unwrapped_model.gnn_ast)
+    #     monitor.register_module('gnn_cfg', unwrapped_model.gnn_cfg)
+    #     monitor.register_module('gnn_dfg', unwrapped_model.gnn_dfg)
+    #     monitor.register_module('fusion_proj', unwrapped_model.fusion_proj)
+    #     monitor.register_module('token_generator', unwrapped_model.token_generator)
+    #     monitor.register_module('cross_attn', unwrapped_model.cross_attn)
 
     # LoRA config
     lora_config = LoraConfig(
-        r=8,
-        lora_alpha=8,
+        r=12,
+        lora_alpha=16,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
         lora_dropout=0.1,
         use_rslora=True

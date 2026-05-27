@@ -9,8 +9,19 @@ class PTListDataset(Dataset):
     def __init__(self, pt_files):
         self.samples = []
         for f in pt_files:
-            # NOTE: PyTorch 2.6 default is weights_only=True for safety; allow non-weight objects
-            self.samples.extend(torch.load(f, weights_only=False))
+            obj = torch.load(f, weights_only=False)
+            if isinstance(obj, dict):
+                # a single sample dict, or a non-sample file like feature_mappings.pt
+                if "input_ids" in obj:
+                    self.samples.append(obj)
+                else:
+                    print(f"[Dataset] skipping non-sample dict: {f}")
+                continue
+            if not isinstance(obj, (list, tuple)):
+                print(f"[Dataset] skipping unexpected type {type(obj).__name__}: {f}")
+                continue
+            # keep only well-formed sample dicts
+            self.samples.extend(s for s in obj if isinstance(s, dict) and "input_ids" in s)
         print(f"[Dataset] loaded {len(self.samples)} samples from {len(pt_files)} files.")
 
     def __len__(self):
